@@ -6,73 +6,52 @@ public class Slingshot : MonoBehaviour {
 	//fields seen in the Inspector panel
 	public GameObject prefabProjectile;
 	public float shotMult = 4.0f;
+    public float moveSpeed = 1.0f;
+    public float moveShotSuspression = 2f;
+    public float camResetThreshold = 2f;
 
 	// Internal variable
 	private GameObject launchPoint;
 	private Vector3 launchPos;
 	private GameObject projectile;
+    private Rigidbody slingshotRB;
+    private float lastShotTime = 0;
+    private Animator animation;
 
 	bool aimingMode;
 
 	void Awake(){
-		Transform launchPointTransform = transform.Find("LaunchPoint");
+        animation = GetComponentInChildren<Animator>();
+        Transform launchPointTransform = transform.FindChild("LaunchDirection");
 		launchPoint = launchPointTransform.gameObject;
-		launchPoint.SetActive(false);
-
+        slingshotRB = GetComponent<Rigidbody>();
 		launchPos = launchPointTransform.position;
 	}
 
-	void OnMouseEnter(){
-		launchPoint.SetActive(true);
-		//print ("hey");
-	}
-	void OnMouseExit(){
-		launchPoint.SetActive(false);
-	}
-
-	void OnMouseDown (){
-		aimingMode = true;
-
-		//Instatiate a new projectile
-		projectile = Instantiate(prefabProjectile)as GameObject;
-
-		//Start it at the launchpoint
-		//set the projectile s position to the launchPos
-		projectile.transform.position = launchPos;
-
-		// Set isKinematic to true for now
-		projectile.GetComponent<Rigidbody> ().isKinematic = true;
-	}
-
 	void Update() {
-		// if we are not in aiming mode, do nothing
-		if (!aimingMode) {
-			return;
-		}
 
-		//get the current mouse position
-		Vector3 mousePos2D = Input.mousePosition;
+        if(Input.GetButtonDown("Jump"))
+        {
+            projectile = Instantiate(prefabProjectile, launchPoint.transform.position, Quaternion.identity) as GameObject;
+            Rigidbody projectileRB = projectile.GetComponent<Rigidbody>();
+            projectileRB.isKinematic = false;
+            projectileRB.velocity = launchPoint.transform.forward * shotMult + slingshotRB.velocity / moveShotSuspression;
+            lastShotTime = Time.time;
+            animation.SetTrigger("Shoot");
 
-		// Convert it to 3D world coordiantes
-		mousePos2D.z = - Camera.main.transform.position.z;
-		Vector3 mousePos3D = Camera.main.ScreenToWorldPoint(mousePos2D);
+            followCam.S.poi = projectile;
+        }
 
-		//Find the difference between launchPos and mouse position
-		Vector3 mouseDelta = mousePos3D - launchPos;
+        if(Mathf.Abs(Input.GetAxis("Horizontal")) > 0.1f)
+        {
+            print(Time.time - lastShotTime);
+            slingshotRB.AddForce(transform.right * Input.GetAxis("Horizontal") * moveSpeed);
+            if(Time.time - lastShotTime > camResetThreshold)
+            {
+                followCam.S.poi = this.gameObject;
+            }
+        }
 
-		float maxMagnitude = this.GetComponent<SphereCollider> ().radius;
-		
-		mouseDelta = Vector3.ClampMagnitude(mouseDelta, maxMagnitude);
 
-		//Move the projectile to this new position
-		projectile.transform.position = launchPos + mouseDelta;
-
-		if (Input.GetMouseButtonUp (0)) {
-			aimingMode = false;
-			projectile.GetComponent<Rigidbody> ().isKinematic = false;
-			projectile.GetComponent<Rigidbody> ().velocity = -mouseDelta * shotMult;
-
-			followCam.S.poi = projectile;
-		}
 	}	
 }

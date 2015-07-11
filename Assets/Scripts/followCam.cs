@@ -5,6 +5,7 @@ public class followCam : MonoBehaviour {
 
 	public static followCam S;
 	public GameObject poi;
+    public float posDamping = 1.0f;
 
 	private float camZ;
 
@@ -13,7 +14,7 @@ public class followCam : MonoBehaviour {
 		camZ = this.transform.position.z;
 	}
 
-	void Update() {
+	void FixedUpdate() {
 		if (poi == null) {
 			return;
 		}
@@ -22,12 +23,12 @@ public class followCam : MonoBehaviour {
 
 		//Limit the x&y position
 
-		destination.x = Mathf.Max (0, destination.x);
+		//destination.x = Mathf.Max (0, destination.x);
 		destination.y = Mathf.Max (0, destination.y);
 
 		destination.z = camZ; 
 
-		transform.position = destination;
+		transform.position = Vector3.Lerp(transform.position, destination, Time.deltaTime * posDamping);
 
 		this.GetComponent<Camera> ().orthographicSize = 10+destination.y;
 	
